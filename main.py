@@ -89,6 +89,7 @@ async  def web_hook(payload: dict = Body(...)):
             slack_msg_type += '\\n>수정 후'+dash+str(payload.get("changelog").get("items")[0].get("toString")).replace("\"","\\\"")
         except Exception as e:
             log.error(e)
+            traceback.print_exc()
             slack_msg_type = '>jira 이슈 수정 - '+payload.get("user").get("displayName")+"("+payload.get("user").get("name")+')'
     elif(before_webhookEvent == "jira:issue_deleted"): #이슈 삭제
         slack_msg_type = '>jira 이슈 삭제 - '+payload.get("user").get("displayName")+"("+payload.get("user").get("name")+')'
@@ -106,7 +107,7 @@ async  def web_hook(payload: dict = Body(...)):
     if(slack_msg_header):
         log.info(slack_msg_header)
         if(len(slack_msg_type) > 40):
-            slack_msg = "{\"text\": \"[jira 알림] - "+slack_msg_type[:40]+"\","
+            slack_msg = "{\"text\": \"[jira 알림] - "+slack_msg_type[:40].replace("\\","")+"\","
         else:
             slack_msg = "{\"text\": \"[jira 알림] - "+slack_msg_type+"\","
         slack_msg += "\"blocks\": [{\"type\": \"section\",\"text\": {\"type\": \"mrkdwn\",\"text\": "
@@ -114,16 +115,16 @@ async  def web_hook(payload: dict = Body(...)):
         log.info(slack_msg)
 
         # 퓨쳐시스템 연구소 > 98jira 채널
-        url = '미공개'
+        url = ''
 
 
         x = requests.post(url, data=slack_msg.encode("utf-8"))
         log.info(x)
 
-        #log.info('ITM-' not in slack_msg_header)
-        if('ITM-' not in slack_msg_header):
+        #log.info('ITM-' in slack_msg_header)
+        if('ITM-' in slack_msg_header):
             # 퓨쳐시스템 itm팀 > 97jira_itm 채널
-            url = '미공개'
+            url = ''
 
             x = requests.post(url, data=slack_msg.encode("utf-8"))
             log.info(x)
