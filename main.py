@@ -1,5 +1,6 @@
 import json
 import time
+import traceback
 
 import requests
 import logging
@@ -35,7 +36,11 @@ async  def web_hook(payload: dict = Body(...)):
     log.info('json_val : '+json_val)
 
     log.info("webhookEvent : "+payload.get("webhookEvent"))
-    log.info("before_webhookEvent : "+before_webhookEvent)
+    try:
+        log.info("issue_event_type_name : "+payload.get("issue_event_type_name"))
+    except Exception as e:
+        log.error("issue_event_type_name not found - "+str(e))
+    log.info("before_webhookEvent >>> "+before_webhookEvent)
 
     if(payload.get("webhookEvent") == before_webhookEvent == "jira:issue_updated"):
         log.critical("======================================")
@@ -55,6 +60,11 @@ async  def web_hook(payload: dict = Body(...)):
 
         # log.info('slack_msg_header : '+slack_msg_header)
 
+    except Exception as e:
+        log.error("slack_msg_header make error >>> " + str(e))
+
+    try:
+
         # log.info("issue.fields.project.key : "+payload.get("issue").get("fields").get("project").get("key"))
         # log.info("issue.fields.project.name : "+payload.get("issue").get("fields").get("project").get("name"))
         # log.info("issue.fields.issuetype.name : "+payload.get("issue").get("fields").get("issuetype").get("name"))
@@ -66,40 +76,56 @@ async  def web_hook(payload: dict = Body(...)):
         slack_msg_content += '     담당자 : '+payload.get("issue").get("fields").get("assignee").get("displayName")+"("+\
                              payload.get("issue").get("fields").get("assignee").get("name")+")"
 
-        # log.info('slack_msg_content : '+slack_msg_content)
+        log.info('slack_msg_content : '+slack_msg_content)
 
     except Exception as e:
-        log.error(e)
+        log.error("slack_msg_content make error >>> " + str(e))
 
     if(before_webhookEvent == "jira:issue_created"): #이슈 생성
         slack_msg_type = '>jira 이슈 생성'
         slack_msg_type += '\\n>'+payload.get("issue").get("fields").get("summary")
-    elif(before_webhookEvent == "jira:issue_updated"): #이슈 수정
+    elif(before_webhookEvent in ["jira:issue_updated","comment_updated"]): #이슈 수정
         try:
-            slack_msg_type = '>jira 이슈 수정 - '+payload.get("user").get("displayName")+"("+payload.get("user").get("name")+')' \
-                             ' > '+payload.get("changelog").get("items")[0].get("field")
-            if(payload.get("changelog").get("items")[0].get("field") == 'description'):
-                dash = '\\n'
-            elif(payload.get("changelog").get("items")[0].get("field").index('WBSGantt') > -1):
-                log.critical("bypass > WBSGantt")
-                return
+            issue_event_type_name = payload.get("issue_event_type_name")
+            if (issue_event_type_name in ["issue_commented", "issue_comment_edited", "issue_comment_deleted"]):
+                if(issue_event_type_name == "issue_commented"):
+                    type = "추가"
+                elif(issue_event_type_name == "issue_comment_deleted"):
+                    type = "삭제"
+                else:
+                    type = "수정"
+                slack_msg_type = '>jira 이슈 수정(코멘트 '+type+') - '+payload.get("user").get("displayName")+"("+payload.get("user").get("name")+')'
+                if (issue_event_type_name != "issue_comment_deleted"):
+                    slack_msg_type += '\\n' + str(payload.get("comment").get("body")).replace("\"", "\\\"")
             else:
-                dash = ' : '
-            slack_msg_type += '\\n>수정 전'+dash+str(payload.get("changelog").get("items")[0].get("fromString")).replace("\"","\\\"")
-            slack_msg_type += '\\n>수정 후'+dash+str(payload.get("changelog").get("items")[0].get("toString")).replace("\"","\\\"")
+                slack_msg_type = '>jira 이슈 수정 - '+payload.get("user").get("displayName")+"("+payload.get("user").get("name")+')' \
+                                 ' > '+payload.get("changelog").get("items")[0].get("field")
+                if(payload.get("changelog").get("items")[0].get("field") == 'description'):
+                    dash = '\\n'
+                elif(payload.get("changelog").get("items")[0].get("field").index('WBSGantt') > -1):
+                    log.critical("bypass > WBSGantt")
+                    return
+                else:
+                    dash = ' : '
+                slack_msg_type += '\\n>수정 전'+dash+str(payload.get("changelog").get("items")[0].get("fromString")).replace("\"","\\\"")
+                slack_msg_type += '\\n>수정 후'+dash+str(payload.get("changelog").get("items")[0].get("toString")).replace("\"","\\\"")
         except Exception as e:
             log.error(e)
+            return
             traceback.print_exc()
             slack_msg_type = '>jira 이슈 수정 - '+payload.get("user").get("displayName")+"("+payload.get("user").get("name")+')'
     elif(before_webhookEvent == "jira:issue_deleted"): #이슈 삭제
         slack_msg_type = '>jira 이슈 삭제 - '+payload.get("user").get("displayName")+"("+payload.get("user").get("name")+')'
     elif(before_webhookEvent == "comment_created"): #댓글 추가
+        return
         slack_msg_type = '>jira 이슈 댓글 추가 - '+payload.get("user").get("displayName")+"("+payload.get("user").get("name")+')'
         slack_msg_type += '\\n>comment '+payload.get("comment").get("body").replace("\"","\\\"")
     elif(before_webhookEvent == "comment_updated"): #댓글 수정
+        return
         slack_msg_type = '>jira 이슈 댓글 수정 - '+payload.get("user").get("displayName")+"("+payload.get("user").get("name")+')'
         slack_msg_type += '\\n>comment '+payload.get("comment").get("body").replace("\"","\\\"")
     elif(before_webhookEvent == "comment_deleted"): #댓글 삭제
+        return
         slack_msg_type = '>jira 이슈 댓글 삭제 - '+payload.get("user").get("displayName")+"("+payload.get("user").get("name")+')'
 
     #log.info(slack_msg_type)
