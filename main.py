@@ -79,8 +79,8 @@ async  def web_hook(payload: dict = Body(...)):
             slack_msg_type = '>jira 이슈 수정 > '+payload.get("changelog").get("items")[0].get("field")
             if(payload.get("changelog").get("items")[0].get("field") == 'description'):
                 dash = '\\n'
-            elif(payload.get("changelog").get("items")[0].get("field") == '진행 상황(WBSGantt)'):
-                log.error("bypass > 진행 상황(WBSGantt)")
+            elif(payload.get("changelog").get("items")[0].get("field").index('WBSGantt') > -1):
+                log.critical("bypass > WBSGantt")
                 return
             else:
                 dash = ' : '
@@ -88,31 +88,44 @@ async  def web_hook(payload: dict = Body(...)):
             slack_msg_type += '\\n>수정 후'+dash+str(payload.get("changelog").get("items")[0].get("toString")).replace("\"","\\\"")
         except Exception as e:
             log.error(e)
-            slack_msg_type = '>jira 이슈 수정'
+            slack_msg_type = '>jira 이슈 수정 '+payload.get("user").get("displayName")+"("+payload.get("user").get("name")+')'
     elif(before_webhookEvent == "jira:issue_deleted"): #이슈 삭제
-        slack_msg_type = '>jira 이슈 삭제'
+        slack_msg_type = '>jira 이슈 삭제 '+payload.get("user").get("displayName")+"("+payload.get("user").get("name")+')'
     elif(before_webhookEvent == "comment_created"): #댓글 추가
-        slack_msg_type = '>jira 이슈 댓글 추가'
-        slack_msg_type += '\\n>comment : '+payload.get("comment").get("body").replace("\"","\\\"")
+        slack_msg_type = '>jira 이슈 댓글 추가 : '+payload.get("user").get("displayName")+"("+payload.get("user").get("name")+')'
+        slack_msg_type += '\\n>comment '+payload.get("comment").get("body").replace("\"","\\\"")
     elif(before_webhookEvent == "comment_updated"): #댓글 수정
-        slack_msg_type = '>jira 이슈 댓글 수정'
-        slack_msg_type += '\\n>comment : '+payload.get("comment").get("body").replace("\"","\\\"")
+        slack_msg_type = '>jira 이슈 댓글 수정 : '+payload.get("user").get("displayName")+"("+payload.get("user").get("name")+')'
+        slack_msg_type += '\\n>comment '+payload.get("comment").get("body").replace("\"","\\\"")
     elif(before_webhookEvent == "comment_deleted"): #댓글 삭제
-        slack_msg_type = '>jira 이슈 댓글 삭제'
+        slack_msg_type = '>jira 이슈 댓글 삭제 '+payload.get("user").get("displayName")+"("+payload.get("user").get("name")+')'
 
-    log.info(slack_msg_type)
+    #log.info(slack_msg_type)
 
     if(slack_msg_header):
         log.info(slack_msg_header)
-        slack_msg = "{\"text\": \"[jira 알림] - "+slack_msg_type[:40]+"\","
+        if(len(slack_msg_type) > 40):
+            slack_msg = "{\"text\": \"[jira 알림] - "+slack_msg_type[:40]+"\","
+        else:
+            slack_msg = "{\"text\": \"[jira 알림] - "+slack_msg_type+"\","
         slack_msg += "\"blocks\": [{\"type\": \"section\",\"text\": {\"type\": \"mrkdwn\",\"text\": "
         slack_msg += "\""+slack_msg_header+"\\n\\n"+slack_msg_content+"\\n"+slack_msg_type+"\"}}]}"
         log.info(slack_msg)
 
         url = 'https://hooks.slack.com/services/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'
+        # 퓨쳐시스템 연구소 > 98jira 채널
+        url = 'https://hooks.slack.com/services/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'
 
         x = requests.post(url, data=slack_msg.encode("utf-8"))
         log.info(x)
+
+        #log.info(slack_msg_header.index('ITM'))
+        if(slack_msg_header.index('ITM-') > -1):
+            # 퓨쳐시스템 itm팀 > 97jira_itm 채널
+            url = 'https://hooks.slack.com/services/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'
+
+            x = requests.post(url, data=slack_msg.encode("utf-8"))
+            log.info(x)
 
     before_webhookEvent = payload.get("webhookEvent")
     return
