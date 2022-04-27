@@ -96,7 +96,7 @@ async  def web_hook(payload: dict = Body(...)):
                     type = "수정"
                 slack_msg_type = '>jira 이슈 수정(코멘트 '+type+') - '+payload.get("user").get("displayName")+"("+payload.get("user").get("name")+')'
                 if (issue_event_type_name != "issue_comment_deleted"):
-                    slack_msg_type += '\\n' + str(payload.get("comment").get("body")).replace("\"", "\\\"")
+                    slack_msg_type += '\\n' + str(payload.get("comment").get("body")).replace("\"", "\\\"")[:2000]
             else:
                 slack_msg_type = '>jira 이슈 수정 - '+payload.get("user").get("displayName")+"("+payload.get("user").get("name")+')' \
                                  ' > '+payload.get("changelog").get("items")[0].get("field")
@@ -107,8 +107,8 @@ async  def web_hook(payload: dict = Body(...)):
                     return
                 else:
                     dash = ' : '
-                slack_msg_type += '\\n>수정 전'+dash+str(payload.get("changelog").get("items")[0].get("fromString")).replace("\"","\\\"")
-                slack_msg_type += '\\n>수정 후'+dash+str(payload.get("changelog").get("items")[0].get("toString")).replace("\"","\\\"")
+                slack_msg_type += '\\n>수정 전'+dash+str(payload.get("changelog").get("items")[0].get("fromString")).replace("\"","\\\"")[:1000]
+                slack_msg_type += '\\n>수정 후'+dash+str(payload.get("changelog").get("items")[0].get("toString")).replace("\"","\\\"")[:1000]
         except Exception as e:
             log.error(e)
             return
@@ -119,11 +119,11 @@ async  def web_hook(payload: dict = Body(...)):
     elif(before_webhookEvent == "comment_created"): #댓글 추가
         return
         slack_msg_type = '>jira 이슈 댓글 추가 - '+payload.get("user").get("displayName")+"("+payload.get("user").get("name")+')'
-        slack_msg_type += '\\n>comment '+payload.get("comment").get("body").replace("\"","\\\"")
+        slack_msg_type += '\\n>comment '+payload.get("comment").get("body").replace("\"","\\\"")[:2000]
     elif(before_webhookEvent == "comment_updated"): #댓글 수정
         return
         slack_msg_type = '>jira 이슈 댓글 수정 - '+payload.get("user").get("displayName")+"("+payload.get("user").get("name")+')'
-        slack_msg_type += '\\n>comment '+payload.get("comment").get("body").replace("\"","\\\"")
+        slack_msg_type += '\\n>comment '+payload.get("comment").get("body").replace("\"","\\\"")[:2000]
     elif(before_webhookEvent == "comment_deleted"): #댓글 삭제
         return
         slack_msg_type = '>jira 이슈 댓글 삭제 - '+payload.get("user").get("displayName")+"("+payload.get("user").get("name")+')'
