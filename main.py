@@ -25,7 +25,7 @@ ch.setFormatter(formatter)
 log.addHandler(ch)
 
 @app.post("/")
-async  def web_hook(payload: dict = Body(...)):
+async def web_hook(payload: dict = Body(...)):
     global before_webhookEvent
 
     slack_msg_content = ''
@@ -102,7 +102,7 @@ async  def web_hook(payload: dict = Body(...)):
                                  ' > '+payload.get("changelog").get("items")[0].get("field")
                 if(payload.get("changelog").get("items")[0].get("field") == 'description'):
                     dash = '\\n'
-                elif(payload.get("changelog").get("items")[0].get("field").index('WBSGantt') > -1):
+                elif(payload.get("changelog").get("items")[0].get("field").find('WBSGantt') > -1):
                     log.critical("bypass > WBSGantt")
                     return
                 else:
@@ -111,8 +111,8 @@ async  def web_hook(payload: dict = Body(...)):
                 slack_msg_type += '\\n>수정 후'+dash+str(payload.get("changelog").get("items")[0].get("toString")).replace("\"","\\\"")[:1000]
         except Exception as e:
             log.error(e)
-            return
             traceback.print_exc()
+            return
             slack_msg_type = '>jira 이슈 수정 - '+payload.get("user").get("displayName")+"("+payload.get("user").get("name")+')'
     elif(before_webhookEvent == "jira:issue_deleted"): #이슈 삭제
         slack_msg_type = '>jira 이슈 삭제 - '+payload.get("user").get("displayName")+"("+payload.get("user").get("name")+')'
